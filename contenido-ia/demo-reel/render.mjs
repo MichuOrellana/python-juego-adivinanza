@@ -24,12 +24,12 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
 page.on('pageerror', e => console.error('PAGE ERROR', e));
 page.on('console', m => m.type() === 'error' && console.error('CONSOLE', m.text()));
-await page.goto(`http://localhost:${port}/index.html`);
+await page.goto(`http://localhost:${port}/${process.env.PAGE || 'index.html'}`);
 await page.waitForFunction(() => window.ready === true, null, { timeout: 120000 });
 const duration = await page.evaluate(() => window.DURATION);
 
 const from = Number(process.argv[3] ?? 0), to = Number(process.argv[4] ?? duration);
-const out = path.join(root, 'reel-demo.mp4');
+const out = path.resolve(root, process.env.OUT || 'reel-demo.mp4');
 const ff = spawn('ffmpeg', ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-',
   '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out], { stdio: ['pipe', 'ignore', 'inherit'] });
 

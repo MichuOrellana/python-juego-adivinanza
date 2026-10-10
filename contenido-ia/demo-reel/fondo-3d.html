@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fondo 3D · Chatbot vs Agente</title>
+<style>
+  @font-face { font-family: 'Cormorant'; font-style: normal; font-weight: 500; src: url(fonts/Cormorant-Medium.ttf); }
+  @font-face { font-family: 'Cormorant'; font-style: italic; font-weight: 500; src: url(fonts/Cormorant-Italic.ttf); }
+  @font-face { font-family: 'InterL'; font-weight: 300; src: url(fonts/Inter-Light.ttf); }
+  @font-face { font-family: 'InterL'; font-weight: 500; src: url(fonts/Inter-Medium.ttf); }
+
+  :root {
+    --amber: #e8b46a;
+    --cream: #f3e6d0;
+    --muted: #a8977f;
+  }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0a0806; }
+  canvas { position: absolute; inset: 0; }
+
+  .layer { position: absolute; left: 0; right: 0; text-align: center; opacity: 0; will-change: opacity, transform; }
+
+  #kicker { top: 230px; font: 500 26px 'InterL'; letter-spacing: 0.42em; color: var(--amber); }
+  #kicker span { color: var(--muted); }
+  #title { top: 280px; font: 500 128px/1.0 'Cormorant'; color: var(--cream); letter-spacing: -0.01em; }
+  #title em { font-style: italic; color: var(--amber); }
+  #rule { top: 545px; left: 470px; right: 470px; height: 1px; background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+
+  .cap { top: 575px; font: 300 46px/1.3 'InterL'; color: var(--cream); letter-spacing: 0.01em; }
+  .cap b { font-weight: 500; color: var(--amber); }
+  .cap small { display: block; margin-top: 14px; font: italic 500 36px 'Cormorant'; color: var(--muted); letter-spacing: 0.02em; }
+
+  #veil { inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(10,8,6,0.8), rgba(10,8,6,0.95)); }
+  #end { top: 760px; }
+  #end .big { font: 500 92px/1.05 'Cormorant'; color: var(--cream); }
+  #end .big em { font-style: italic; color: var(--amber); }
+  #end .handle { margin-top: 48px; font: 500 36px 'InterL'; letter-spacing: 0.08em; color: var(--amber); }
+  #end .hint { margin-top: 22px; font: 300 30px 'InterL'; color: var(--muted); letter-spacing: 0.04em; }
+
+  #grain { inset: 0; opacity: 0.06; mix-blend-mode: overlay; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "./node_modules/three/build/three.module.js",
+  "three/addons/": "./node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+  <div id="kicker" class="layer">INTELIGENCIA ARTIFICIAL <span>· 01</span></div>
+  <div id="title" class="layer">¿Cómo <em>piensa</em><br>una IA?</div>
+  <div id="rule" class="layer"></div>
+
+  <div id="cap1" class="cap layer">Capas de <b>neuronas artificiales</b><small>inspiradas en el cerebro</small></div>
+  <div id="cap2" class="cap layer">Cada conexión tiene un <b>peso</b><small>aprendido de millones de ejemplos</small></div>
+  <div id="cap3" class="cap layer">La señal viaja… <b>y decide</b><small>eso es una predicción</small></div>
+
+  <div id="veil" class="layer"></div>
+  <div id="end" class="layer">
+    <div class="big">Entendé la IA<br><em>sin humo.</em></div>
+    <div class="handle">@michelorellana.creator</div>
+    <div class="hint">Seguime · Guardá este video</div>
+  </div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const W = 1080, H = 1920;
+const DURATION = 42; // duración del Reel "Chatbot vs. Agente"
+
+// ---------- utilidades deterministas ----------
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rand = mulberry32(7);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const fadeWindow = (t, a, b, f = 0.5) => smooth(a, a + f, t) * (1 - smooth(b - f, b, t));
+
+// ruido de valor + fbm para la madera
+const perm = new Uint8Array(512); { const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
+const grad = new Float32Array(256).map(() => rand());
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const h = (i, j) => grad[perm[(perm[(xi + i) & 255] + yi + j) & 255]];
+  return (h(0,0) * (1-u) + h(1,0) * u) * (1-v) + (h(0,1) * (1-u) + h(1,1) * u) * v;
+}
+const fbm = (x, y) => { let s = 0, a = 0.5, f = 1; for (let i = 0; i < 5; i++) { s += a * vnoise(x * f, y * f); f *= 2; a *= 0.5; } return s; };
+
+const DARK = [38, 24, 15], MID = [96, 62, 38], LIGHT = [150, 106, 68];
+const mix3 = (c1, c2, t) => c1.map((c, i) => c + (c2[i] - c) * t);
+
+function woodTop(size = 1024) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const nx = x / size - 0.5, ny = y / size - 0.5;
+    const d = Math.hypot(nx * 1.04, ny) + 0.05 * fbm(nx * 4 + 10, ny * 4 + 10);
+    const ph = d * 250 - 120 * d * d + 7 * fbm(nx * 2.2, ny * 2.2);
+    const ring = 0.5 + 0.5 * Math.sin(ph);
+    const late = Math.pow(0.5 + 0.5 * Math.sin(ph + 0.6), 9); // líneas de madera tardía
+    const fine = fbm(nx * 90, ny * 90);
+    let c = mix3(MID, LIGHT, 0.5 * ring * fbm(nx * 3 + 4, ny * 3));
+    c = mix3(c, DARK, 0.75 * late);
+    c = mix3(c, DARK, 0.35 * fine);
+    // grietas radiales (rústico)
+    const ang = Math.atan2(ny, nx);
+    for (const [a0, len] of [[0.7, 0.32], [2.9, 0.22], [4.6, 0.38]]) {
+      let da = Math.abs(((ang - a0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      const w = 0.016 * (1 - d / len) / Math.max(d, 0.04);
+      if (d < len && d > 0.03) c = mix3(c, [10, 6, 4], 0.85 * (1 - smooth(w * 0.4, w, da + 0.004 * fbm(d * 40, a0))));
+    }
+    // corazón claro y corteza oscura
+    c = mix3(c, LIGHT, 0.35 * (1 - smooth(0.0, 0.06, d)));
+    c = mix3(c, [20, 12, 7], smooth(0.44, 0.5, d));
+    const i = (y * size + x) * 4; img.data[i] = c[0]; img.data[i+1] = c[1]; img.data[i+2] = c[2]; img.data[i+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+function woodSide(w = 1024, h = 256) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const nx = x / w, ny = y / h;
+    const g = 0.5 + 0.5 * Math.sin(nx * 260 + 6 * fbm(nx * 4, ny * 2));
+    let c = mix3([30, 18, 10], [70, 44, 26], Math.pow(g, 3));
+    c = mix3(c, [16, 9, 5], 0.4 * fbm(nx * 40, ny * 8));
+    const i = (y * w + x) * 4; img.data[i] = c[0]; img.data[i+1] = c[1]; img.data[i+2] = c[2]; img.data[i+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
+}
+function glowSprite() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const ctx = cv.getContext('2d'), g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,0.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(cv);
+}
+
+// ---------- escena ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0806);
+scene.fog = new THREE.Fog(0x0a0806, 10, 22);
+
+const camera = new THREE.PerspectiveCamera(46, W / H, 0.1, 100);
+
+// luces cálidas
+scene.add(new THREE.HemisphereLight(0x3a2a1c, 0x050302, 0.35));
+const key = new THREE.SpotLight(0xffd2a0, 80, 30, 0.42, 0.75, 1.6);
+key.position.set(1.5, 11, 3); key.target.position.set(0, 0, 0);
+key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.radius = 6;
+scene.add(key, key.target);
+const rim = new THREE.PointLight(0xff9a4a, 12, 12, 2); rim.position.set(-3.5, 1.2, -3); scene.add(rim);
+const netLight = new THREE.PointLight(0xffb060, 0, 7, 2); netLight.position.set(0, 2.3, 0.4); scene.add(netLight);
+
+// tronco de nogal (corte transversal con anillos)
+const SLAB_R = 2.2, SLAB_H = 0.6;
+const slabGeo = new THREE.CylinderGeometry(SLAB_R, SLAB_R * 1.02, SLAB_H, 128, 1);
+const sideMat = new THREE.MeshPhysicalMaterial({ map: woodSide(), roughness: 0.85 });
+const topMat = new THREE.MeshPhysicalMaterial({ map: woodTop(), roughness: 0.6, clearcoat: 0.18, clearcoatRoughness: 0.5 });
+const slab = new THREE.Mesh(slabGeo, [sideMat, topMat, sideMat]);
+slab.position.y = -SLAB_H / 2; slab.castShadow = slab.receiveShadow = true; scene.add(slab);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x120d09, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -SLAB_H; ground.receiveShadow = true; scene.add(ground);
+
+// ---------- red neuronal ----------
+const LAYERS = [5, 8, 8, 8, 3];
+const NET_Y = 2.2, NET_W = 3.3;
+const nodes = []; // {target, start, layer}
+LAYERS.forEach((n, l) => {
+  const x = -NET_W / 2 + (NET_W * l) / (LAYERS.length - 1);
+  for (let k = 0; k < n; k++) {
+    const y = NET_Y + (k - (n - 1) / 2) * 0.32;
+    const z = Math.sin(k * 1.7 + l) * 0.25;
+    const th = rand() * Math.PI * 2, ph = Math.acos(2 * rand() - 1), r = 5 + rand() * 4;
+    nodes.push({ layer: l, target: new THREE.Vector3(x, y, z),
+      start: new THREE.Vector3(r * Math.sin(ph) * Math.cos(th), NET_Y + r * Math.cos(ph) * 0.8, r * Math.sin(ph) * Math.sin(th) - 2),
+      delay: rand() * 0.9 });
+  }
+});
+const edges = [];
+let off = 0;
+for (let l = 0; l < LAYERS.length - 1; l++) {
+  const a0 = off, b0 = off + LAYERS[l];
+  for (let i = 0; i < LAYERS[l]; i++) for (let j = 0; j < LAYERS[l + 1]; j++)
+    edges.push({ a: a0 + i, b: b0 + j, layer: l, w: 0.25 + 0.75 * Math.pow(rand(), 1.6), jitter: rand() * 0.18 });
+  off += LAYERS[l];
+}
+
+const nodeMat = new THREE.MeshStandardMaterial({ color: 0x1a120b, emissive: 0xffb25c, emissiveIntensity: 1, roughness: 0.4, metalness: 0.2 });
+const nodeMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 24, 16), nodeMat, nodes.length);
+nodeMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nodes.length * 3), 3);
+scene.add(nodeMesh);
+
+// halo por nodo
+const sprite = glowSprite();
+const haloGeo = new THREE.BufferGeometry();
+haloGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nodes.length * 3), 3));
+haloGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nodes.length * 3), 3));
+const halos = new THREE.Points(haloGeo, new THREE.PointsMaterial({ size: 0.55, map: sprite, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(halos);
+
+const lineGeo = new THREE.BufferGeometry();
+lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edges.length * 6), 3));
+lineGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(edges.length * 6), 3));
+const lines = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(lines);
+
+const pulseGeo = new THREE.BufferGeometry();
+pulseGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edges.length * 3), 3));
+pulseGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(edges.length * 3), 3));
+const pulses = new THREE.Points(pulseGeo, new THREE.PointsMaterial({ size: 0.32, map: sprite, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(pulses);
+
+// polvo en el haz de luz
+const DUST = 320;
+const dustBase = [];
+const dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(DUST * 3), 3));
+for (let i = 0; i < DUST; i++) dustBase.push([ (rand() - 0.5) * 5, rand() * 6 - 0.3, (rand() - 0.5) * 4, rand() * 10, 0.3 + rand() ]);
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.035, color: 0xffd6a0, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(dust);
+
+// ---------- postproceso ----------
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(1); composer.setSize(W, H);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.8, 0.5, 0.82);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// grano de película (estático, sutil)
+{
+  const cv = document.createElement('canvas'); cv.id = 'grain'; cv.className = 'layer'; cv.width = W / 2; cv.height = H / 2;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(cv.width, cv.height);
+  for (let i = 0; i < img.data.length; i += 4) { const v = rand() * 255; img.data[i] = img.data[i+1] = img.data[i+2] = v; img.data[i+3] = 255; }
+  ctx.putImageData(img, 0, 0); cv.style.width = W + 'px'; cv.style.height = H + 'px'; cv.style.opacity = 0.06;
+  document.body.appendChild(cv);
+}
+
+// ---------- línea de tiempo ----------
+const $ = id => document.getElementById(id);
+const AMBER = new THREE.Color(0xffb25c), HOT = new THREE.Color(0xfff1d6);
+const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpC = new THREE.Color();
+const SEG = 0.32;
+// Ondas de señal: pocas y lentas mientras se habla del chatbot (una pregunta, una respuesta),
+// continuas desde que aparece el agente (t = 10 s).
+const WAVES = [4.8, 7.6];
+for (let w = 10.0; w < 38; w += 0.95) WAVES.push(w);
+
+function waveEnergy(t, layerPos) {
+  // energía de la onda en una posición de capa (0..L-1) en el tiempo t
+  let e = 0;
+  for (const w of WAVES) {
+    if (w > t) break;
+    const head = (t - w) / SEG;
+    if (head < -1) continue;
+    const d = head - layerPos;
+    if (d >= 0 && d < 1.4) e = Math.max(e, 1 - d / 1.4);
+  }
+  return e;
+}
+
+function renderAt(t) {
+  // cámara: órbita lenta + acercamiento
+  const p = easeInOut(clamp(t / DURATION));
+  const ang = -0.6 + 1.3 * p;
+  const dist = 12.2 - 1.2 * Math.sin(p * Math.PI) - 1.4 * easeInOut(smooth(37.2, 42, t));
+  camera.position.set(Math.sin(ang) * dist, 3.4 + 0.5 * Math.sin(p * Math.PI), Math.cos(ang) * dist);
+  camera.lookAt(0, 2.55, 0);
+
+  key.intensity = 120 * smooth(0, 1.6, t);
+  rim.intensity = 4 * smooth(0.4, 2.2, t);
+
+  // formación de nodos
+  const nodeColors = nodeMesh.instanceColor.array, hp = haloGeo.attributes.position.array, hc = haloGeo.attributes.color.array;
+  let netGlow = 0;
+  nodes.forEach((n, i) => {
+    const f = easeInOut(smooth(1.4 + n.delay, 3.6 + n.delay * 0.6, t));
+    tmpV.lerpVectors(n.start, n.target, f);
+    tmpV.y += Math.sin(t * 1.3 + i) * 0.03 * f;
+    const s = 0.2 + 0.8 * f;
+    tmpM.makeScale(s, s, s).setPosition(tmpV);
+    nodeMesh.setMatrixAt(i, tmpM);
+    const e = waveEnergy(t, n.layer);
+    const vis = smooth(1.2 + n.delay * 0.5, 2.2 + n.delay * 0.5, t);
+    tmpC.copy(AMBER).lerp(HOT, e).multiplyScalar(vis * (0.55 + 1.6 * e));
+    nodeColors[i*3] = tmpC.r; nodeColors[i*3+1] = tmpC.g; nodeColors[i*3+2] = tmpC.b;
+    hp[i*3] = tmpV.x; hp[i*3+1] = tmpV.y; hp[i*3+2] = tmpV.z;
+    const hv = vis * (0.18 + 0.75 * e);
+    hc[i*3] = AMBER.r * hv; hc[i*3+1] = AMBER.g * hv; hc[i*3+2] = AMBER.b * hv;
+    netGlow += e;
+  });
+  nodeMesh.instanceMatrix.needsUpdate = true; nodeMesh.instanceColor.needsUpdate = true;
+  haloGeo.attributes.position.needsUpdate = true; haloGeo.attributes.color.needsUpdate = true;
+  netLight.intensity = (3 + 10 * netGlow / nodes.length) * smooth(2.5, 4, t);
+
+  // conexiones y pulsos
+  const lp = lineGeo.attributes.position.array, lc = lineGeo.attributes.color.array;
+  const pp = pulseGeo.attributes.position.array, pc = pulseGeo.attributes.color.array;
+  const pos = i => { tmpM.fromArray(nodeMesh.instanceMatrix.array, i * 16); return new THREE.Vector3().setFromMatrixPosition(tmpM); };
+  const P = nodes.map((_, i) => pos(i));
+  edges.forEach((e, i) => {
+    const A = P[e.a], B = P[e.b];
+    lp.set([A.x, A.y, A.z, B.x, B.y, B.z], i * 6);
+    const grow = smooth(3.4 + e.layer * 0.25, 4.3 + e.layer * 0.25, t);
+    const act = waveEnergy(t, e.layer + 0.5);
+    const base = grow * (0.07 + 0.16 * e.w) + act * 0.5 * e.w;
+    for (let k = 0; k < 2; k++) { lc[i*6+k*3] = AMBER.r * base; lc[i*6+k*3+1] = AMBER.g * base; lc[i*6+k*3+2] = AMBER.b * base; }
+    // pulso: posición de la cabeza de onda más reciente sobre esta arista
+    let u = -1, best = -1;
+    for (let k = WAVES.length - 1; k >= 0; k--) {
+      if (WAVES[k] > t) continue;
+      const head = (t - WAVES[k]) / SEG - e.layer - e.jitter;
+      if (head > 1) break;
+      if (head >= 0) { u = head; best = k; break; }
+    }
+    if (u >= 0) {
+      const eu = easeInOut(u);
+      pp[i*3] = A.x + (B.x - A.x) * eu; pp[i*3+1] = A.y + (B.y - A.y) * eu; pp[i*3+2] = A.z + (B.z - A.z) * eu;
+      const b = e.w * Math.sin(Math.PI * u) * 1.4;
+      pc[i*3] = HOT.r * b; pc[i*3+1] = HOT.g * b * 0.9; pc[i*3+2] = HOT.b * b * 0.7;
+    } else { pc[i*3] = pc[i*3+1] = pc[i*3+2] = 0; pp[i*3+1] = -50; }
+  });
+  lineGeo.attributes.position.needsUpdate = lineGeo.attributes.color.needsUpdate = true;
+  pulseGeo.attributes.position.needsUpdate = pulseGeo.attributes.color.needsUpdate = true;
+
+  // polvo
+  const dp = dustGeo.attributes.position.array;
+  dustBase.forEach(([x, y, z, ph, sp], i) => {
+    dp[i*3] = x + Math.sin(t * 0.3 * sp + ph) * 0.25;
+    dp[i*3+1] = -0.3 + ((y + t * 0.12 * sp) % 6);
+    dp[i*3+2] = z + Math.cos(t * 0.25 * sp + ph) * 0.25;
+  });
+  dustGeo.attributes.position.needsUpdate = true;
+  dust.material.opacity = 0.35 * smooth(0.3, 2, t);
+
+  composer.render();
+
+  // textos
+  const show = (id, a, b, rise = 18, f = 0.6) => {
+    const o = fadeWindow(t, a, b, f), el = $(id);
+    el.style.opacity = o; el.style.transform = `translateY(${(1 - smooth(a, a + f, t)) * rise}px)`;
+  };
+  show('kicker', 0.5, 9.4, 12, 0.8);
+  show('title', 0.8, 9.4, 26, 0.9);
+  show('rule', 1.2, 9.4, 0, 0.8);
+  show('cap1', 3.9, 6.0, 20);
+  show('cap2', 6.0, 7.8, 20);
+  show('cap3', 7.8, 9.6, 20);
+  $('veil').style.opacity = smooth(9.2, 9.9, t);
+  show('end', 9.5, DURATION + 1, 22, 0.7);
+}
+
+window.DURATION = DURATION;
+window.renderAt = renderAt;
+await document.fonts.ready;
+document.querySelectorAll('.layer:not(#grain)').forEach(e => e.style.display = 'none');
+window.ready = true;
+
+// vista previa en vivo si se abre en el navegador
+if (!navigator.webdriver) {
+  const t0 = performance.now();
+  const loop = () => { renderAt(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(loop); };
+  loop();
+}
+</script>
+</body>
+</html>
