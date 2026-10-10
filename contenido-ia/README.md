@@ -42,3 +42,18 @@ node render-carrusel.mjs  # vuelve a generar los PNG (o solo algunas: node rende
 - `src/carrusel/piezas.tsx`: piezas reutilizables (tarjetas, burbujas de chat, chips, el diagrama del ciclo del agente).
 - `src/carrusel/ChatbotVsAgente.tsx`: el contenido de este carrusel. Para hacer uno nuevo, copia este archivo, cambia los textos y regístralo en `src/Root.tsx`.
 - `public/escena-red.png`: fondo de la portada, capturado de la escena 3D del Reel con `demo-reel/still-sin-texto.mjs`.
+
+## Reel 02 · "Chatbot vs. Agente" (video, 42 s)
+
+Es el carrusel convertido en un Reel vertical de 1080×1920. El fondo 3D se mueve durante todo el video y reacciona a la historia: hay pocas señales mientras se habla del chatbot y pulsos continuos cuando aparece el agente. Cada slide entra y sale como una tarjeta que gira en 3D, con animaciones propias (chat con "escribiendo…", ciclo del agente con un punto de luz, contador del 90% y tronco que gira con el @).
+
+```bash
+# 1) Fondo 3D (solo si cambias la escena; tarda unos 20 min)
+cd contenido-ia/demo-reel && PAGE=fondo-3d.html OUT=../remotion/public/fondo-3d.mp4 node render.mjs 30
+# 2) Video final
+cd ../remotion && node render-reel.mjs             # → out/reel-chatbot-vs-agente.mp4
+SIN_VIDEO=1 node render-reel.mjs --cuadros 300 900 # cuadros sueltos para revisar
+```
+
+- `src/video/ChatbotVsAgenteReel.tsx`: las escenas y sus tiempos (`ESCENAS`).
+- `src/video/anim.tsx` y `piezasAnim.tsx`: animaciones reutilizables (título palabra por palabra, burbujas, contador, ciclo).
