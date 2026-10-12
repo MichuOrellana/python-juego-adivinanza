@@ -18,7 +18,7 @@ export type GuionChat = {
   tiempos: { amigosHasta: number; icono: number; pedidoDesde: number; pedidoHasta: number; esloganDesde: number; logoDesde: number };
 };
 
-export const DURACION_CHAT = 570;
+export const DURACION_CHAT = 650;
 const cl = { extrapolateLeft: 'clamp' as const, extrapolateRight: 'clamp' as const };
 const ANCHO_CHAT = 920, AREA_ALTO = 1080;
 
@@ -89,6 +89,7 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
   const esloganOp = interpolate(f, [t.esloganDesde, t.esloganDesde + 4, t.logoDesde - 6, t.logoDesde], [0, 1, 1, 0], cl);
   const logo = spring({ frame: f - t.logoDesde, fps, config: { damping: 12 } });
   const pie = interpolate(f, [t.logoDesde + 18, t.logoDesde + 30], [0, 1], cl);
+  const tarjeta = spring({ frame: f - (t.logoDesde + 70), fps, config: { damping: 15, mass: 0.9 } });
 
   // posición del ícono: centro de pantalla → avatar del encabezado
   const iconoX = interpolate(iconoSube, [0, 1], [540, 150]);
@@ -138,14 +139,17 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
 
         {/* 5 · logo final */}
         {f >= t.logoDesde && (
-          <div style={{ position: 'absolute', top: 400, left: 0, right: 0, textAlign: 'center' }}>
-            <LogoMigas marca={marca} desde={t.logoDesde} />
-            <div style={{ marginTop: 40, fontSize: 34, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: color.acento, opacity: pie }}>♥ Día de la Madre · {marca.extra.fecha}</div>
-            <div style={{ marginTop: 28, display: 'inline-flex', alignItems: 'center', gap: 14, padding: '20px 40px', borderRadius: 999, background: '#25d366', color: '#fff', fontWeight: 700, fontSize: 40, opacity: pie, transform: `translateY(${(1 - pie) * 24}px)` }}>
-              Pedí por WhatsApp
+          <>
+            {/* logo + nombre: primero solo en el centro, después sube y se achica para dar lugar a la tarjeta */}
+            <div style={{ position: 'absolute', top: 380, left: 0, right: 0, textAlign: 'center', transformOrigin: '50% 0', transform: `translateY(${-200 * tarjeta}px) scale(${1 - 0.36 * tarjeta})` }}>
+              <LogoMigas marca={marca} desde={t.logoDesde} foto={420} />
+              <div style={{ marginTop: 34, fontSize: 34, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: color.acento, opacity: pie * (1 - tarjeta) }}>♥ Día de la Madre · {marca.extra.fecha}</div>
             </div>
-            <div style={{ marginTop: 22, fontSize: 32, fontWeight: 500, color: color.texto, opacity: pie * 0.7 }}>{marca.textos.cta.pie}</div>
-          </div>
+            {/* tarjeta de agradecimiento con Instagram, QR y WhatsApp */}
+            <div style={{ position: 'absolute', left: 40, width: 1000, top: 830, transform: `translateY(${(1 - tarjeta) * 1200}px) rotate(${(1 - tarjeta) * 6}deg)`, borderRadius: 30, overflow: 'hidden', boxShadow: '0 30px 70px rgba(90,50,25,0.3)', border: '6px solid #fff' }}>
+              <Img src={staticFile(marca.extra.tarjeta)} style={{ display: 'block', width: '100%' }} />
+            </div>
+          </>
         )}
       </AbsoluteFill>
     </AbsoluteFill>

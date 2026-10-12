@@ -5,6 +5,7 @@ export type ComboAnuncio = {
   fecha: string;
   // Fotos en public/migasok/. Para usar las fotos reales del negocio, reemplazá estos archivos (mismo nombre).
   logo: string;
+  tarjeta: string; // tarjeta de agradecimiento con Instagram, QR y WhatsApp (pantalla final)
   fotos: { apertura: string; miga1: string; miga2: string; budin1: string; budin2: string };
   subMiga: string;
   subBudin: string;
@@ -17,7 +18,7 @@ export type ComboAnuncio = {
 export const MIGASOK: MarcaAnuncio & { extra: ComboAnuncio } = {
   nombre: 'MigasOk',
   bajada: 'El clásico que siempre suma',
-  color: { fondo: '#f4e9da', fondo2: '#fffaf2', texto: '#2b1d16', acento: '#d8432f', acento2: '#4f8a3a', producto: '#ffffff', liquido: '#000000', espuma: '#ffffff' },
+  color: { fondo: '#f4e9da', fondo2: '#fffaf2', texto: '#2b1d16', acento: '#d8432f', acento2: '#a8741a', producto: '#ffffff', liquido: '#000000', espuma: '#ffffff' },
   fuente: { display: 'Fraunces', texto: 'DM Sans' },
   textos: {
     gancho: ['¿Ya sabés qué', 'regalarle a *mamá?*'],
@@ -27,7 +28,8 @@ export const MIGASOK: MarcaAnuncio & { extra: ComboAnuncio } = {
   },
   extra: {
     fecha: 'Domingo 18 de octubre',
-    logo: 'migasok/logo-sandwich.png',
+    logo: 'migasok/logo-chef.png',
+    tarjeta: 'migasok/tarjeta-gracias.jpg',
     fotos: { apertura: 'migasok/miga-triangulos.jpg', miga1: 'migasok/miga-pila.jpg', miga2: 'migasok/miga-rectangulos.jpg', budin1: 'migasok/budin-chocolate.jpg', budin2: 'migasok/budines-vainilla.jpg' },
     subMiga: 'Clásicos de jamón y queso',
     subBudin: 'Para acompañar el mate con mamá',
