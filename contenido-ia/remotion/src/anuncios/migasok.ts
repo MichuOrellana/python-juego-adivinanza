@@ -27,7 +27,7 @@ export const MIGASOK: MarcaAnuncio & { extra: ComboAnuncio } = {
   },
   extra: {
     fecha: 'Domingo 18 de octubre',
-    logo: 'migasok/logo.png',
+    logo: 'migasok/logo-sandwich.png',
     fotos: { apertura: 'migasok/miga-triangulos.jpg', miga1: 'migasok/miga-pila.jpg', miga2: 'migasok/miga-rectangulos.jpg', budin1: 'migasok/budin-chocolate.jpg', budin2: 'migasok/budines-vainilla.jpg' },
     subMiga: 'Clásicos de jamón y queso',
     subBudin: 'Para acompañar el mate con mamá',

@@ -3,6 +3,7 @@ import React from 'react';
 import { AbsoluteFill, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Palabras, Tramo } from './AnuncioProducto';
 import type { MIGASOK } from './migasok';
+import { LogoMigas } from './LogoMigas';
 
 export const DURACION_DIA_MADRE = 450;
 const cl = { extrapolateLeft: 'clamp' as const, extrapolateRight: 'clamp' as const };
@@ -104,7 +105,7 @@ export const AnuncioDiaMadre: React.FC<{ marca: Marca }> = ({ marca }) => {
       {/* 5 · cierre */}
       <Escena desde={360} dur={90}>
         <FondoMarca marca={marca} />
-        <div style={{ position: 'absolute', top: 960, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 26 }}>
+        <div style={{ position: 'absolute', top: 1010, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 26 }}>
           {[extra.fotos.miga1, extra.fotos.budin1, extra.fotos.apertura].map((src, i) => {
             const s = spring({ frame: f - 372 - i * 5, fps, config: { damping: 12 } });
             return <Img key={src} src={staticFile(src)} style={{ width: 200, height: 200, borderRadius: 100, objectFit: 'cover', border: '10px solid #fff', boxShadow: '0 16px 36px rgba(70,40,20,0.25)', transform: `scale(${s}) translateY(${i === 1 ? -30 : 0}px)` }} />;
@@ -145,11 +146,11 @@ export const AnuncioDiaMadre: React.FC<{ marca: Marca }> = ({ marca }) => {
           {extra.precio ?? 'Consultá el precio'}
         </div>
       </Tramo>
-      <Tramo desde={362} hasta={480} top={270}>
-        <Img src={staticFile(extra.logo)} style={{ width: 480, height: 480, borderRadius: '50%', boxShadow: '0 26px 60px rgba(90,50,25,0.25)', opacity: Math.min(1, boton * 1.4), transform: `scale(${0.85 + 0.15 * boton})` }} />
+      <Tramo desde={362} hasta={480} top={250}>
+        <LogoMigas marca={marca} desde={366} foto={300} nombre={130} />
       </Tramo>
       {f >= 368 && (
-        <div style={{ position: 'absolute', top: 1250, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, opacity: boton, transform: `translateY(${(1 - boton) * 80}px)` }}>
+        <div style={{ position: 'absolute', top: 1280, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, opacity: boton, transform: `translateY(${(1 - boton) * 80}px)` }}>
           <div style={{ transform: `scale(${pulso})`, display: 'flex', alignItems: 'center', gap: 18, padding: '28px 60px', borderRadius: 999, background: '#25d366', color: '#fff', fontWeight: 700, fontSize: 50, boxShadow: '0 18px 44px rgba(37,211,102,0.35)' }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3.9 2.5 1 2.7.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z" /></svg>
             {textos.cta.boton}

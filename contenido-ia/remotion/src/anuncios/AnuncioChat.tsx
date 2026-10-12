@@ -3,6 +3,7 @@
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { MIGASOK } from './migasok';
+import { FotoLogo, LogoMigas } from './LogoMigas';
 
 type Marca = typeof MIGASOK;
 export type Mensaje =
@@ -118,7 +119,13 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
             position: 'absolute', left: iconoX - iconoTam / 2, top: iconoY - iconoTam / 2, width: iconoTam, height: iconoTam,
             borderRadius: '50%', transform: `scale(${iconoEntra})`, boxShadow: `0 ${24 * (1 - iconoSube)}px ${60 * (1 - iconoSube)}px rgba(90,50,25,0.28)`,
           }}>
-            <Img src={staticFile(marca.extra.logo)} style={{ width: '100%', height: '100%', display: 'block' }} />
+            <FotoLogo marca={marca} size={iconoTam} borde={iconoTam * 0.03} sombra={false} />
+          </div>
+        )}
+
+        {iconoVisible && f < t.pedidoDesde && (
+          <div style={{ position: 'absolute', top: 1230, left: 0, right: 0, textAlign: 'center', fontFamily: fuente.texto, fontWeight: 700, fontSize: 110, letterSpacing: '-0.035em', color: color.texto, opacity: interpolate(f, [t.icono + 6, t.icono + 14, t.pedidoDesde - 8, t.pedidoDesde - 2], [0, 1, 1, 0], cl), transform: `translateY(${interpolate(f, [t.icono + 6, t.icono + 14], [30, 0], cl)}px)` }}>
+            Migas<span style={{ color: color.acento }}>Ok</span>
           </div>
         )}
 
@@ -131,8 +138,8 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
 
         {/* 5 · logo final */}
         {f >= t.logoDesde && (
-          <div style={{ position: 'absolute', top: 470, left: 0, right: 0, textAlign: 'center' }}>
-            <Img src={staticFile(marca.extra.logo)} style={{ width: 600, height: 600, borderRadius: '50%', boxShadow: '0 30px 70px rgba(90,50,25,0.25)', transform: `scale(${0.8 + 0.2 * logo})`, opacity: Math.min(1, logo * 1.5) }} />
+          <div style={{ position: 'absolute', top: 400, left: 0, right: 0, textAlign: 'center' }}>
+            <LogoMigas marca={marca} desde={t.logoDesde} />
             <div style={{ marginTop: 40, fontSize: 34, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: color.acento, opacity: pie }}>♥ Día de la Madre · {marca.extra.fecha}</div>
             <div style={{ marginTop: 28, display: 'inline-flex', alignItems: 'center', gap: 14, padding: '20px 40px', borderRadius: 999, background: '#25d366', color: '#fff', fontWeight: 700, fontSize: 40, opacity: pie, transform: `translateY(${(1 - pie) * 24}px)` }}>
               Pedí por WhatsApp
