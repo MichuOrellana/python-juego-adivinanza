@@ -1,0 +1,15 @@
+Chatbot vs. Agente: no son lo mismo (y la diferencia importa) 👇
+
+Un chatbot responde. Vos preguntás, te contesta… y el resto del trabajo lo seguís haciendo vos.
+
+Un agente actúa. Le das un objetivo, arma un plan, usa herramientas (navegador, código, email, calendario), revisa su trabajo y te pide aprobación.
+
+Hoy el 90% de los programadores profesionales ya trabaja con agentes de IA cada semana (JetBrains, 2026).
+
+La regla de oro: vos decidís, el agente ejecuta, vos aprobás.
+
+💾 Guardalo para cuando lo necesites
+📲 Compartilo con alguien que todavía los confunde
+➡️ Seguime en @michelorellana.creator para entender la IA sin humo
+
+#inteligenciaartificial #IA #agentesdeIA #chatgpt #claude #programacion #tecnologia #productividad #emprendedores #aprendeia

@@ -1,0 +1,596 @@
+<title>Laboratorio de Agentes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+  /* Layout: escena 3D a todo el ancho arriba, consola del agente debajo (dos columnas en escritorio), notas al final.
+     Look único y oscuro a propósito: la marca es nogal + luz ámbar sobre negro. */
+  :root {
+    --bg: #0b0907;
+    --surface: #15100c;
+    --surface-2: #1c1510;
+    --line: rgba(232, 180, 106, 0.22);
+    --line-soft: rgba(243, 230, 208, 0.10);
+    --fg: #f3e6d0;
+    --muted: #a8977f;
+    --accent: #e8b46a;
+    --accent-ink: #1a1007;
+    --ok: #9fd39a;
+    --warn: #e9a07a;
+    --f-display: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
+    --f-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font-family: var(--f-body); font-weight: 300; font-size: 16px; line-height: 1.55; margin: 0; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+
+  header.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 18px; flex-wrap: wrap; }
+  .handle { font-weight: 500; letter-spacing: 0.04em; color: var(--accent); text-decoration: none; }
+  .handle:hover, .handle:focus-visible { text-decoration: underline; }
+  .eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase; color: var(--muted); }
+
+  /* ---------- escena ---------- */
+  .stage { position: relative; height: clamp(420px, 68vh, 680px); border-block: 1px solid var(--line-soft); overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #1a120b, var(--bg) 70%); }
+  #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+  #scene:active { cursor: grabbing; }
+  .hero-copy { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; padding-block: 28px; background: linear-gradient(180deg, rgba(11,9,7,0.85), rgba(11,9,7,0) 100%); }
+  .hero-copy h1 { font-family: var(--f-display); font-weight: 500; font-size: clamp(42px, 7vw, 84px); line-height: 1; margin: 10px 0 12px; text-wrap: balance; letter-spacing: -0.01em; }
+  .hero-copy h1 em { color: var(--accent); }
+  .hero-copy p { margin: 0; max-width: 46ch; color: var(--muted); font-size: clamp(15px, 1.8vw, 18px); }
+  .hud { position: absolute; right: 20px; bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; pointer-events: none; }
+  .hud span { font-family: var(--f-mono); font-size: 12px; color: var(--muted); background: rgba(11,9,7,0.7); border: 1px solid var(--line-soft); border-radius: 999px; padding: 4px 10px; font-variant-numeric: tabular-nums; }
+  .hint { position: absolute; left: 20px; bottom: 16px; font-size: 12px; color: var(--muted); pointer-events: none; }
+
+  /* ---------- consola ---------- */
+  .lab { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; padding-block: 28px 12px; }
+  @media (max-width: 860px) { .lab { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 20px; min-width: 0; }
+  .panel h2 { font-family: var(--f-display); font-weight: 500; font-size: 30px; margin: 0 0 4px; }
+  .panel h2 em { color: var(--accent); }
+  .panel .sub { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+
+  .modes { display: inline-flex; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 999px; padding: 4px; gap: 4px; margin-bottom: 14px; }
+  .modes button { font: 500 14px var(--f-body); color: var(--muted); background: transparent; border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .modes button:focus-visible, .chips button:focus-visible, .send:focus-visible, #prompt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mode-note { font-size: 13px; color: var(--muted); margin: -4px 0 14px; }
+
+  .chat { display: flex; flex-direction: column; gap: 10px; min-height: 220px; max-height: 360px; overflow-y: auto; padding: 4px 2px 8px; }
+  .msg { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.you { align-self: flex-end; background: rgba(232,180,106,0.14); border: 1px solid var(--line); border-bottom-right-radius: 4px; }
+  .msg.ai { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--line-soft); border-bottom-left-radius: 4px; }
+  .msg .who { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .msg.you .who { color: var(--accent); }
+  .msg.thinking .body { color: var(--muted); font-style: italic; }
+  .msg.note { align-self: center; max-width: 100%; font-size: 13px; color: var(--muted); background: transparent; padding: 2px 8px; text-align: center; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .chips button { font: 400 13px var(--f-body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+  .chips button:hover { background: rgba(232,180,106,0.08); }
+
+  form.ask { display: flex; gap: 8px; }
+  #prompt { flex: 1; min-width: 0; font: 400 15px var(--f-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line-soft); border-radius: 12px; padding: 12px 14px; }
+  #prompt::placeholder { color: var(--muted); }
+  .send { font: 500 15px var(--f-body); color: var(--accent-ink); background: var(--accent); border: 0; border-radius: 12px; padding: 0 18px; cursor: pointer; }
+  .send[disabled] { opacity: 0.5; cursor: progress; }
+  .send.stop { background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); }
+
+  /* registro de pasos del agente */
+  .log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 470px; overflow-y: auto; }
+  .log li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--bg); }
+  .log li .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 1px solid var(--line); color: var(--accent); }
+  .log li.done .dot { background: rgba(159,211,154,0.12); border-color: rgba(159,211,154,0.5); color: var(--ok); }
+  .log li.fail .dot { border-color: rgba(233,160,122,0.6); color: var(--warn); }
+  .log code { font-family: var(--f-mono); font-size: 12.5px; color: var(--accent); overflow-wrap: anywhere; }
+  .log .what { display: block; color: var(--fg); }
+  .log .empty { display: block; color: var(--muted); }
+  .status { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .status b { font-weight: 500; color: var(--fg); }
+
+  /* ---------- explicación ---------- */
+  .how { padding-block: 24px 40px; }
+  .how h2 { font-family: var(--f-display); font-weight: 500; font-size: clamp(30px, 4vw, 44px); margin: 6px 0 18px; text-wrap: balance; }
+  .how h2 em { color: var(--accent); }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 760px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+  .steps div { border-top: 1px solid var(--line); padding-top: 14px; min-width: 0; }
+  .steps .n { font-family: var(--f-display); font-style: italic; font-size: 26px; color: var(--accent); }
+  .steps h3 { font-weight: 500; font-size: 17px; margin: 4px 0 6px; }
+  .steps p { margin: 0; color: var(--muted); font-size: 15px; max-width: 40ch; }
+
+  footer { border-top: 1px solid var(--line-soft); padding-block: 22px 34px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <a class="handle" href="https://www.instagram.com/michelorellana.creator/" target="_blank" rel="noopener">@michelorellana.creator</a>
+    <span class="eyebrow">Laboratorio · Chatbot vs. Agente</span>
+  </header>
+</div>
+
+<section class="stage" aria-label="Escena 3D: red neuronal sobre un tronco de nogal">
+  <canvas id="scene"></canvas>
+  <div class="hero-copy">
+    <div class="wrap">
+      <span class="eyebrow">Demo en vivo</span>
+      <h1>Pedile algo.<br><em>Mirá cómo actúa.</em></h1>
+      <p>Esta red neuronal no es un video. Escribile al agente y va a usar herramientas para cambiarla delante tuyo.</p>
+    </div>
+  </div>
+  <div class="hint">Arrastrá para girar</div>
+  <div class="hud" aria-live="polite">
+    <span id="hud-layers">capas 5·8·8·8·3</span>
+    <span id="hud-color">color #ffb25c</span>
+    <span id="hud-spin">giro 0.15</span>
+  </div>
+</section>
+
+<main class="wrap">
+  <section class="lab">
+    <div class="panel">
+      <h2>Consola</h2>
+      <p class="sub">Elegí el modo y pedí un cambio. Probá lo mismo en los dos modos para ver la diferencia.</p>
+      <div class="modes" role="group" aria-label="Modo">
+        <button type="button" id="mode-agent" aria-pressed="true">Agente</button>
+        <button type="button" id="mode-chat" aria-pressed="false">Chatbot</button>
+      </div>
+      <p class="mode-note" id="mode-note">El agente tiene 5 herramientas para mirar y cambiar la escena.</p>
+      <div class="chat" id="chat" aria-live="polite">
+        <div class="msg ai"><span class="who">Agente</span><span class="body">Hola. Puedo cambiar la red que ves arriba: su tamaño, su color, la velocidad de giro y las señales que la recorren. ¿Qué querés que haga?</span></div>
+      </div>
+      <div class="chips" id="chips">
+        <button type="button">Hacé la red más grande y pintala de azul</button>
+        <button type="button">Mandá 5 señales seguidas</button>
+        <button type="button">Girá la cámara más rápido</button>
+        <button type="button">Dejala simple: 3 capas chicas en verde</button>
+        <button type="button">¿Qué es una neurona artificial? Mostrámelo</button>
+      </div>
+      <form class="ask" id="ask">
+        <label for="prompt" class="eyebrow" hidden>Mensaje</label>
+        <input id="prompt" name="prompt" autocomplete="off" maxlength="400" placeholder="Ej: pintala de violeta y mandá 3 señales">
+        <button class="send" id="send" type="submit">Enviar</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Lo que hizo <em>el agente</em></h2>
+      <p class="sub">Cada herramienta que usa aparece acá, en orden, mientras la ejecuta.</p>
+      <ol class="log" id="log">
+        <li><span class="dot">·</span><span><span class="empty">Todavía no usó ninguna herramienta. Pedile un cambio en modo Agente.</span></span></li>
+      </ol>
+      <p class="status" id="status">Conectando con Claude…</p>
+    </div>
+  </section>
+
+  <section class="how">
+    <span class="eyebrow">Qué acaba de pasar</span>
+    <h2>Un chatbot te <em>contesta</em>. Un agente <em>hace</em>.</h2>
+    <div class="steps">
+      <div><span class="n">i.</span><h3>Vos das un objetivo</h3><p>Escribís lo que querés en tus palabras, sin comandos ni menús.</p></div>
+      <div><span class="n">ii.</span><h3>Elige sus herramientas</h3><p>Primero mira cómo está la escena y después decide qué funciones usar y con qué valores, una o varias.</p></div>
+      <div><span class="n">iii.</span><h3>Actúa y te cuenta</h3><p>Las herramientas cambian la escena de verdad. Al final te resume qué hizo. El chatbot, sin herramientas, solo puede explicarte cómo hacerlo.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Hecho con Three.js y Claude · Guía 02 · Chatbot vs. Agente</span>
+    <a class="handle" href="https://www.instagram.com/michelorellana.creator/" target="_blank" rel="noopener">Seguime en Instagram →</a>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ================= ESCENA 3D =================
+  const canvas = document.getElementById('scene');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hasGL = typeof THREE !== 'undefined';
+  const escena = { capas: [5, 8, 8, 8, 3], color: '#ffb25c', giro: 0.15, brillo: 1 };
+  const api = {}; // funciones que usan las herramientas del agente
+
+  function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const rand = mulberry32(7);
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  function fbmFactory(seed) {
+    const r = mulberry32(seed), perm = new Uint8Array(512), p = [...Array(256).keys()];
+    for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+    const g = new Float32Array(256).map(() => r());
+    const v = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), w = yf * yf * (3 - 2 * yf), h = (i, j) => g[perm[(perm[(xi + i) & 255] + yi + j) & 255]]; return (h(0,0)*(1-u)+h(1,0)*u)*(1-w)+(h(0,1)*(1-u)+h(1,1)*u)*w; };
+    return (x, y) => { let s = 0, a = 0.5, f = 1; for (let i = 0; i < 5; i++) { s += a * v(x * f, y * f); f *= 2; a *= 0.5; } return s; };
+  }
+  const mix = (a, b, t) => a.map((c, i) => c + (b[i] - c) * t);
+  const OSC = [36, 22, 14], MED = [92, 58, 35], CLA = [140, 98, 62];
+
+  function texAnillos(size) {
+    const fbm = fbmFactory(5), cv = document.createElement('canvas'); cv.width = cv.height = size;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const nx = x / size - 0.5, ny = y / size - 0.5;
+      const d = Math.hypot(nx * 1.04, ny) + 0.05 * fbm(nx * 4 + 10, ny * 4 + 10);
+      const ph = d * 250 - 120 * d * d + 7 * fbm(nx * 2.2, ny * 2.2);
+      let c = mix(MED, CLA, 0.5 * (0.5 + 0.5 * Math.sin(ph)) * fbm(nx * 3 + 4, ny * 3));
+      c = mix(c, OSC, 0.75 * Math.pow(0.5 + 0.5 * Math.sin(ph + 0.6), 9));
+      c = mix(c, OSC, 0.3 * fbm(nx * 70, ny * 70));
+      c = mix(c, [16, 10, 6], clamp((d - 0.44) / 0.06));
+      const i = (y * size + x) * 4; img.data[i] = c[0]; img.data[i+1] = c[1]; img.data[i+2] = c[2]; img.data[i+3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; return t;
+  }
+  function texCorteza(w, h) {
+    const fbm = fbmFactory(3), cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const nx = x / w, ny = y / h, g = 0.5 + 0.5 * Math.sin(nx * 260 + 6 * fbm(nx * 4, ny * 2));
+      let c = mix([30, 18, 10], [70, 44, 26], Math.pow(g, 3)); c = mix(c, [16, 9, 5], 0.4 * fbm(nx * 40, ny * 8));
+      const i = (y * w + x) * 4; img.data[i] = c[0]; img.data[i+1] = c[1]; img.data[i+2] = c[2]; img.data[i+3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; t.wrapS = THREE.RepeatWrapping; return t;
+  }
+  function spriteGlow() {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const ctx = cv.getContext('2d'), g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv);
+  }
+
+  if (hasGL) {
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0907);
+    scene.fog = new THREE.Fog(0x0b0907, 12, 26);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+
+    scene.add(new THREE.HemisphereLight(0x3a2a1c, 0x050302, 0.5));
+    const key = new THREE.SpotLight(0xffd2a0, 2.2, 30, 0.45, 0.75, 1.2);
+    key.position.set(1.5, 11, 3); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0005;
+    scene.add(key, key.target);
+    const netLight = new THREE.PointLight(0xffb060, 0.6, 7, 2); netLight.position.set(0, 2.3, 0.4); scene.add(netLight);
+
+    const SLAB_R = 2.2, SLAB_H = 0.6;
+    const side = new THREE.MeshStandardMaterial({ map: texCorteza(512, 128), roughness: 0.85 });
+    const top = new THREE.MeshStandardMaterial({ map: texAnillos(512), roughness: 0.6 });
+    const slab = new THREE.Mesh(new THREE.CylinderGeometry(SLAB_R, SLAB_R * 1.02, SLAB_H, 96), [side, top, side]);
+    slab.position.y = -SLAB_H / 2; slab.castShadow = slab.receiveShadow = true; scene.add(slab);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x120d09, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -SLAB_H; ground.receiveShadow = true; scene.add(ground);
+
+    const sprite = spriteGlow();
+    const colorAct = new THREE.Color(escena.color), colorObj = new THREE.Color(escena.color);
+    const HOT = new THREE.Color(0xfff1d6);
+    let nodos = [], aristas = [];
+    let nodeMesh, halos, lineas, pulsos;
+    const MAXN = 7 * 12, MAXE = 6 * 12 * 12;
+
+    // Geometrías con capacidad máxima; se dibuja solo lo que se usa.
+    nodeMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffffff }), MAXN);
+    nodeMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAXN * 3), 3);
+    scene.add(nodeMesh);
+    const mkPoints = (n, size) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      const p = new THREE.Points(g, new THREE.PointsMaterial({ size, map: sprite, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      scene.add(p); return p;
+    };
+    halos = mkPoints(MAXN, 0.55); pulsos = mkPoints(MAXE, 0.32);
+    { const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAXE * 6), 3));
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(MAXE * 6), 3));
+      lineas = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      scene.add(lineas); }
+
+    const DUST = 220, dust = [];
+    { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(DUST * 3), 3));
+      for (let i = 0; i < DUST; i++) dust.push([(rand() - 0.5) * 5, rand() * 6, (rand() - 0.5) * 4, rand() * 10, 0.3 + rand()]);
+      scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 0.035, color: 0xffd6a0, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })));
+      api._dustGeo = g; }
+
+    const NET_Y = 2.2;
+    function construir(capas, t) {
+      const W = Math.min(4.2, 0.85 * (capas.length - 1) + 0.4);
+      const viejos = nodos;
+      nodos = []; aristas = [];
+      capas.forEach((n, l) => {
+        const x = capas.length === 1 ? 0 : -W / 2 + (W * l) / (capas.length - 1);
+        for (let k = 0; k < n; k++) {
+          const target = new THREE.Vector3(x, NET_Y + (k - (n - 1) / 2) * Math.min(0.32, 3.4 / Math.max(n, 1)), Math.sin(k * 1.7 + l) * 0.25);
+          const prev = viejos[nodos.length];
+          const start = prev ? prev.pos.clone() : new THREE.Vector3((rand() - 0.5) * 9, NET_Y + (rand() - 0.5) * 6, (rand() - 0.5) * 6 - 2);
+          nodos.push({ layer: l, target, start, pos: start.clone(), t0: t + rand() * 0.4 });
+        }
+      });
+      let off = 0;
+      for (let l = 0; l < capas.length - 1; l++) {
+        for (let i = 0; i < capas[l]; i++) for (let j = 0; j < capas[l + 1]; j++)
+          aristas.push({ a: off + i, b: off + capas[l] + j, layer: l, w: 0.25 + 0.75 * Math.pow(rand(), 1.6), jitter: rand() * 0.18 });
+        off += capas[l];
+      }
+      nodeMesh.count = nodos.length;
+      halos.geometry.setDrawRange(0, nodos.length);
+      lineas.geometry.setDrawRange(0, aristas.length * 2);
+      pulsos.geometry.setDrawRange(0, aristas.length);
+    }
+
+    let ondas = []; // tiempos de inicio de cada señal
+    const SEG = 0.32;
+    function energia(t, pos) {
+      let e = 0;
+      for (const w of ondas) { const d = (t - w) / SEG - pos; if (d >= 0 && d < 1.4) e = Math.max(e, 1 - d / 1.4); }
+      return e;
+    }
+
+    let angulo = -0.35, arrastre = null, reloj = 0, ultimaAmbiente = 2, ultimo = performance.now();
+    canvas.addEventListener('pointerdown', e => { arrastre = { x: e.clientX, a: angulo }; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener('pointermove', e => { if (arrastre) angulo = arrastre.a - (e.clientX - arrastre.x) * 0.006; });
+    const soltar = () => { arrastre = null; };
+    canvas.addEventListener('pointerup', soltar); canvas.addEventListener('pointercancel', soltar);
+
+    function tamano() {
+      const r = canvas.getBoundingClientRect();
+      renderer.setSize(r.width, r.height, false);
+      camera.aspect = r.width / r.height;
+      camera.fov = camera.aspect < 0.8 ? 58 : 42;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(tamano).observe(canvas); tamano();
+
+    construir(escena.capas, 0);
+    const m4 = new THREE.Matrix4(), tc = new THREE.Color();
+
+    function frame(now) {
+      const dt = Math.min(0.05, (now - ultimo) / 1000); ultimo = now; reloj += dt;
+      const t = reloj;
+      if (!arrastre) angulo += escena.giro * dt * (reduceMotion ? 0.3 : 1);
+      const dist = camera.aspect < 0.8 ? 13.5 : 10.5;
+      const angosta = camera.aspect < 0.8, ancha = camera.aspect > 1.25;
+      camera.position.set(Math.sin(angulo) * dist, 3.6, Math.cos(angulo) * dist);
+      camera.lookAt(0, angosta ? 2.9 : 1.8, 0);
+      // en pantallas anchas corre la escena a la derecha para dejar libre el título
+      if (ancha) camera.translateX(-Math.min(3.2, (camera.aspect - 1.25) * 3.5));
+      colorAct.lerp(colorObj, 1 - Math.pow(0.02, dt));
+      if (!reduceMotion && t - ultimaAmbiente > 4.5) { ondas.push(t); ultimaAmbiente = t; }
+      ondas = ondas.filter(w => t - w < 6);
+
+      const nc = nodeMesh.instanceColor.array, hp = halos.geometry.attributes.position.array, hc = halos.geometry.attributes.color.array;
+      let glow = 0;
+      nodos.forEach((n, i) => {
+        const f = ease(clamp((t - n.t0) / 1.4));
+        n.pos.lerpVectors(n.start, n.target, f);
+        const y = n.pos.y + Math.sin(t * 1.3 + i) * 0.03;
+        m4.makeScale(1, 1, 1).setPosition(n.pos.x, y, n.pos.z); nodeMesh.setMatrixAt(i, m4);
+        const e = energia(t, n.layer); glow += e;
+        tc.copy(colorAct).lerp(HOT, e).multiplyScalar((0.55 + 1.5 * e) * escena.brillo);
+        nc[i*3] = tc.r; nc[i*3+1] = tc.g; nc[i*3+2] = tc.b;
+        hp[i*3] = n.pos.x; hp[i*3+1] = y; hp[i*3+2] = n.pos.z;
+        const hv = (0.2 + 0.8 * e) * escena.brillo;
+        hc[i*3] = colorAct.r * hv; hc[i*3+1] = colorAct.g * hv; hc[i*3+2] = colorAct.b * hv;
+        n.y = y;
+      });
+      nodeMesh.instanceMatrix.needsUpdate = true; nodeMesh.instanceColor.needsUpdate = true;
+      halos.geometry.attributes.position.needsUpdate = true; halos.geometry.attributes.color.needsUpdate = true;
+      netLight.color.copy(colorAct); netLight.intensity = 0.5 + 2.5 * glow / Math.max(1, nodos.length);
+
+      const lp = lineas.geometry.attributes.position.array, lc = lineas.geometry.attributes.color.array;
+      const pp = pulsos.geometry.attributes.position.array, pc = pulsos.geometry.attributes.color.array;
+      aristas.forEach((e, i) => {
+        const A = nodos[e.a], B = nodos[e.b];
+        lp[i*6] = A.pos.x; lp[i*6+1] = A.y; lp[i*6+2] = A.pos.z; lp[i*6+3] = B.pos.x; lp[i*6+4] = B.y; lp[i*6+5] = B.pos.z;
+        const base = (0.08 + 0.15 * e.w + 0.5 * e.w * energia(t, e.layer + 0.5)) * escena.brillo;
+        for (let k = 0; k < 2; k++) { lc[i*6+k*3] = colorAct.r * base; lc[i*6+k*3+1] = colorAct.g * base; lc[i*6+k*3+2] = colorAct.b * base; }
+        let u = -1;
+        for (let k = ondas.length - 1; k >= 0; k--) { const h = (t - ondas[k]) / SEG - e.layer - e.jitter; if (h >= 0 && h <= 1) { u = h; break; } }
+        if (u >= 0) {
+          const eu = ease(u);
+          pp[i*3] = A.pos.x + (B.pos.x - A.pos.x) * eu; pp[i*3+1] = A.y + (B.y - A.y) * eu; pp[i*3+2] = A.pos.z + (B.pos.z - A.pos.z) * eu;
+          const b = e.w * Math.sin(Math.PI * u) * 1.4; pc[i*3] = b; pc[i*3+1] = b * 0.9; pc[i*3+2] = b * 0.7;
+        } else { pc[i*3] = pc[i*3+1] = pc[i*3+2] = 0; pp[i*3+1] = -50; }
+      });
+      lineas.geometry.attributes.position.needsUpdate = lineas.geometry.attributes.color.needsUpdate = true;
+      pulsos.geometry.attributes.position.needsUpdate = pulsos.geometry.attributes.color.needsUpdate = true;
+
+      const dp = api._dustGeo.attributes.position.array;
+      dust.forEach(([x, y, z, ph, sp], i) => { dp[i*3] = x + Math.sin(t * 0.3 * sp + ph) * 0.25; dp[i*3+1] = -0.3 + ((y + t * 0.12 * sp) % 6); dp[i*3+2] = z + Math.cos(t * 0.25 * sp + ph) * 0.25; });
+      api._dustGeo.attributes.position.needsUpdate = true;
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    api.cambiarRed = capas => { escena.capas = capas; construir(capas, reloj); };
+    api.cambiarColor = hex => { escena.color = hex; colorObj.set(hex); };
+    api.enviarSenales = n => { for (let i = 0; i < n; i++) ondas.push(reloj + 0.1 + i * 0.45); };
+    api.girar = v => { escena.giro = v; };
+    api.brillo = b => { escena.brillo = b; };
+  } else {
+    // Sin WebGL: la consola sigue funcionando y el HUD refleja los cambios.
+    canvas.replaceWith(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'Tu navegador no muestra 3D, pero el agente igual registra los cambios.', style: 'top:50%;left:20px' }));
+    api.cambiarRed = c => { escena.capas = c; }; api.cambiarColor = h => { escena.color = h; };
+    api.enviarSenales = () => {}; api.girar = v => { escena.giro = v; }; api.brillo = b => { escena.brillo = b; };
+  }
+
+  const hud = () => {
+    document.getElementById('hud-layers').textContent = 'capas ' + escena.capas.join('·');
+    document.getElementById('hud-color').textContent = 'color ' + escena.color;
+    document.getElementById('hud-spin').textContent = 'giro ' + escena.giro.toFixed(2);
+  };
+
+  // ================= HERRAMIENTAS DEL AGENTE =================
+  const logEl = document.getElementById('log');
+  let logVacio = true;
+  function paso(texto, codigo) {
+    if (logVacio) { logEl.innerHTML = ''; logVacio = false; }
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="dot">…</span><span><span class="what"></span><code></code></span>';
+    li.querySelector('.what').textContent = texto;
+    li.querySelector('code').textContent = codigo;
+    logEl.prepend(li);
+    return ok => { li.classList.add(ok ? 'done' : 'fail'); li.querySelector('.dot').textContent = ok ? '✓' : '!'; };
+  }
+  const hexOk = h => /^#[0-9a-f]{6}$/i.test(h);
+
+  const HERRAMIENTAS = [
+    { name: 'ver_escena', description: 'Devuelve el estado actual de la escena 3D: capas de la red (neuronas por capa), color en hex, velocidad de giro y brillo. Usala antes de cambiar algo relativo ("más grande", "más rápido").',
+      run() { return { capas: escena.capas, color: escena.color, giro: escena.giro, brillo: escena.brillo }; },
+      label: () => ['Miró cómo está la escena', 'ver_escena()'] },
+    { name: 'cambiar_red', description: 'Reconstruye la red neuronal con nuevas capas. "capas" es una lista de 2 a 7 números enteros, cada uno de 1 a 12 (neuronas por capa, de izquierda a derecha). Devuelve las capas aplicadas.',
+      inputSchema: { type: 'object', properties: { capas: { type: 'array', items: { type: 'integer', minimum: 1, maximum: 12 }, minItems: 2, maxItems: 7 } }, required: ['capas'] },
+      run({ capas }) {
+        const c = Array.isArray(capas) ? capas.map(n => Math.round(clamp(Number(n) || 1, 1, 12))).slice(0, 7) : [];
+        if (c.length < 2) throw new Error('Necesito entre 2 y 7 capas.');
+        api.cambiarRed(c); return { capas: c };
+      },
+      label: i => ['Reconstruyó la red', `cambiar_red(${JSON.stringify(i.capas)})`] },
+    { name: 'cambiar_color', description: 'Cambia el color de la luz de la red. "hex" es un color #rrggbb. Elegí tonos luminosos (se ven sobre fondo negro). Devuelve el color aplicado.',
+      inputSchema: { type: 'object', properties: { hex: { type: 'string', description: 'Color #rrggbb' } }, required: ['hex'] },
+      run({ hex }) { const h = String(hex).trim(); if (!hexOk(h)) throw new Error('El color tiene que ser #rrggbb.'); api.cambiarColor(h.toLowerCase()); return { color: h.toLowerCase() }; },
+      label: i => ['Cambió el color', `cambiar_color("${i.hex}")`] },
+    { name: 'enviar_senales', description: 'Hace viajar señales de luz por la red, de la capa de entrada a la de salida, como una predicción. "cantidad" de 1 a 10.',
+      inputSchema: { type: 'object', properties: { cantidad: { type: 'integer', minimum: 1, maximum: 10 } }, required: ['cantidad'] },
+      run({ cantidad }) { const n = Math.round(clamp(Number(cantidad) || 1, 1, 10)); api.enviarSenales(n); return { enviadas: n }; },
+      label: i => ['Envió señales por la red', `enviar_senales(${i.cantidad})`] },
+    { name: 'girar_camara', description: 'Fija la velocidad de giro de la cámara alrededor de la escena: 0 = quieta, 0.15 = lenta (normal), 1 = rápida; negativo gira al revés. Rango -1 a 1.',
+      inputSchema: { type: 'object', properties: { velocidad: { type: 'number', minimum: -1, maximum: 1 } }, required: ['velocidad'] },
+      run({ velocidad }) { const v = clamp(Number(velocidad) || 0, -1, 1); api.girar(v); return { giro: v }; },
+      label: i => ['Ajustó el giro de la cámara', `girar_camara(${i.velocidad})`] },
+  ];
+  const toolsParaClaude = HERRAMIENTAS.map(h => ({
+    name: h.name, description: h.description, ...(h.inputSchema ? { inputSchema: h.inputSchema } : {}),
+    execute(input) {
+      const [txt, code] = h.label(input || {});
+      const fin = paso(txt, code);
+      try { const r = h.run(input || {}); fin(true); hud(); return r; }
+      catch (err) { fin(false); throw err; }
+    },
+  }));
+
+  // ================= CONSOLA =================
+  const chatEl = document.getElementById('chat'), form = document.getElementById('ask'), input = document.getElementById('prompt');
+  const sendBtn = document.getElementById('send'), statusEl = document.getElementById('status');
+  let modo = 'agente', sample = null, puedeTools = false, ocupado = false, ctl = null;
+  const historial = { agente: [], chatbot: [] };
+
+  const REGLAS = {
+    agente: 'Sos el agente de una demo en la página de @michelorellana.creator, una cuenta que explica IA en español. En pantalla hay una red neuronal 3D de luz sobre un tronco de nogal. Podés mirarla y cambiarla SOLO con tus herramientas. Cuando el visitante pida un cambio, usá las herramientas que hagan falta (podés usar varias; si el pedido es relativo, primero usá ver_escena). Después respondé en 1 o 2 frases, en español rioplatense, contando qué hiciste. Si te preguntan algo de IA, respondé claro en máximo 3 frases y, si ayuda, ilustralo con la escena (por ejemplo, enviando señales). Si piden algo que tus herramientas no pueden hacer, decilo y ofrecé lo más parecido. Sin markdown.',
+    chatbot: 'Sos un chatbot simple en una demo de la página de @michelorellana.creator. En pantalla hay una red neuronal 3D, pero vos NO tenés herramientas ni acceso a ella: solo podés responder con texto. Respondé en 1 a 3 frases, en español rioplatense, sin markdown. Si te piden cambiar la escena (color, tamaño, señales, giro), explicá amablemente que como chatbot solo podés decir cómo se haría, y sugerí probar el mismo pedido en el modo Agente.',
+  };
+
+  function burbuja(clase, quien, texto) {
+    const d = document.createElement('div'); d.className = 'msg ' + clase;
+    d.innerHTML = quien ? '<span class="who"></span><span class="body"></span>' : '<span class="body"></span>';
+    if (quien) d.querySelector('.who').textContent = quien;
+    d.querySelector('.body').textContent = texto;
+    chatEl.append(d); chatEl.scrollTop = chatEl.scrollHeight; return d;
+  }
+  function setModo(m) {
+    modo = m;
+    document.getElementById('mode-agent').setAttribute('aria-pressed', m === 'agente');
+    document.getElementById('mode-chat').setAttribute('aria-pressed', m === 'chatbot');
+    document.getElementById('mode-note').textContent = m === 'agente'
+      ? 'El agente tiene 5 herramientas para mirar y cambiar la escena.'
+      : 'El chatbot solo responde texto. No puede tocar la escena.';
+    burbuja('note', '', m === 'agente' ? 'Modo Agente activado' : 'Modo Chatbot activado');
+  }
+  document.getElementById('mode-agent').onclick = () => modo !== 'agente' && setModo('agente');
+  document.getElementById('mode-chat').onclick = () => modo !== 'chatbot' && setModo('chatbot');
+  document.getElementById('chips').addEventListener('click', e => { if (e.target.tagName === 'BUTTON' && !ocupado) { input.value = e.target.textContent; form.requestSubmit(); } });
+
+  const ERRORES = {
+    not_granted: 'No diste permiso para usar Claude en esta página, así que sigo en modo demo local.',
+    sampling_disabled: 'Claude no está disponible en tu cuenta, así que sigo en modo demo local.',
+    rate_limited: 'Se alcanzó el límite de mensajes por ahora. Probá de nuevo en un rato.',
+    session_expired: 'Tu sesión de Claude venció. Volvé a iniciar sesión y probá otra vez.',
+    refused: 'Claude no quiso responder ese pedido. Probá con otra frase.',
+    empty_completion: 'No llegó respuesta. Probá pedirlo de otra forma.',
+  };
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (ocupado) { ctl?.abort(); return; }
+    const texto = input.value.trim(); if (!texto) return;
+    input.value = '';
+    burbuja('you', 'Vos', texto);
+    const m = modo, quien = m === 'agente' ? 'Agente' : 'Chatbot';
+    const out = burbuja('ai thinking', quien, 'Pensando…');
+    const body = out.querySelector('.body');
+    ocupado = true; sendBtn.textContent = 'Detener'; sendBtn.classList.add('stop');
+
+    if (!sample || (m === 'agente' && !puedeTools)) {
+      await demoLocal(m, texto, body);
+      out.classList.remove('thinking');
+    } else {
+      historial[m].push({ role: 'user', content: texto });
+      const turnos = [{ role: 'user', content: REGLAS[m] }, ...historial[m].slice(-8)];
+      ctl = new AbortController();
+      try {
+        const opts = { signal: ctl.signal, cache: false, modelTier: 'quick', onText: ({ text }) => { out.classList.remove('thinking'); body.textContent = text; chatEl.scrollTop = chatEl.scrollHeight; } };
+        if (m === 'agente') { delete opts.cache; opts.tools = toolsParaClaude; }
+        const { text } = await sample(turnos, opts);
+        body.textContent = text;
+        historial[m].push({ role: 'assistant', content: text });
+      } catch (err) {
+        historial[m].pop();
+        out.classList.remove('thinking');
+        if (err?.code === 'cancelled') body.textContent = (err.text || '') + (err.text ? '\n' : '') + '(detenido)';
+        else if (err?.code === 'not_granted' || err?.code === 'sampling_disabled' || err?.code === 'not_declared' || err?.code === 'capability_disabled') {
+          sample = null; statusEl.innerHTML = 'Modo <b>demo local</b>: sin conexión a Claude. Las respuestas son guiones simples.';
+          body.textContent = ERRORES[err.code] || 'No puedo usar Claude acá, así que sigo en modo demo local.';
+          if (m === 'agente') { const b2 = burbuja('ai', 'Agente (demo local)', ''); await demoLocal(m, texto, b2.querySelector('.body')); }
+        } else body.textContent = (err?.text ? err.text + '\n' : '') + (ERRORES[err?.code] || 'Se cortó la conexión. Probá enviarlo de nuevo.');
+      }
+      hud();
+    }
+    ocupado = false; sendBtn.textContent = 'Enviar'; sendBtn.classList.remove('stop'); input.focus();
+  });
+
+  // Demo sin Claude: reglas simples para que la página funcione en cualquier lado.
+  const COLORES = { azul: '#6fb7ff', celeste: '#8fd3ff', rojo: '#ff6a5c', verde: '#7be08f', violeta: '#b58cff', morado: '#b58cff', lila: '#c9a2ff', rosa: '#ff8fc8', cian: '#5fe3e0', turquesa: '#5fe3e0', blanco: '#f3ead9', dorado: '#ffc35c', ámbar: '#ffb25c', ambar: '#ffb25c', naranja: '#ff9a4a', amarillo: '#ffe066' };
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  async function demoLocal(m, texto, body) {
+    const t = texto.toLowerCase();
+    if (m === 'chatbot') {
+      await espera(700);
+      body.textContent = /color|pint|grande|chic|capa|señal|senal|gir|rot/.test(t)
+        ? 'Como chatbot solo puedo responder con texto: no tengo acceso a la escena. Para cambiarla tendrías que tocar el código. Probá el mismo pedido en modo Agente.'
+        : 'Una neurona artificial recibe números, los multiplica por sus pesos, los suma y pasa el resultado a la siguiente capa. (Respuesta de la demo local.)';
+      return;
+    }
+    const hechos = [];
+    const usar = async (nombre, args) => { await espera(450); toolsParaClaude.find(x => x.name === nombre).execute(args); };
+    if (/grande|agrand|más capas|mas capas|compleja/.test(t)) { await usar('ver_escena', {}); await usar('cambiar_red', { capas: [5, 10, 10, 10, 10, 4] }); hechos.push('agrandé la red a 6 capas'); }
+    if (/simple|chic|reduc|3 capas|tres capas/.test(t)) { await usar('cambiar_red', { capas: [3, 5, 3] }); hechos.push('la dejé en 3 capas chicas'); }
+    const col = Object.keys(COLORES).find(c => t.includes(c));
+    if (col) { await usar('cambiar_color', { hex: COLORES[col] }); hechos.push('la pinté de ' + col); }
+    if (/señal|senal|pulso|dispar|neurona|predic/.test(t)) { const n = Number((t.match(/\d+/) || [3])[0]); await usar('enviar_senales', { cantidad: n }); hechos.push(`mandé ${Math.min(10, n)} señales`); }
+    if (/fren|deten|quiet|par[aá]/.test(t)) { await usar('girar_camara', { velocidad: 0 }); hechos.push('frené la cámara'); }
+    else if (/gir|rot|rápid|rapid/.test(t)) { await usar('girar_camara', { velocidad: /rápid|rapid/.test(t) ? 0.7 : 0.35 }); hechos.push('aceleré el giro'); }
+    hud();
+    body.textContent = hechos.length ? 'Listo: ' + hechos.join(', ') + '. (Demo local, sin Claude.)' : 'En la demo local entiendo pedidos de tamaño, color, señales y giro. Probá con: "pintala de violeta y mandá 3 señales".';
+  }
+
+  // Conexión con Claude (si la página se ve dentro de Claude).
+  (async () => {
+    try { sample = window.claude?.use ? await window.claude.use('sample') : null; } catch { sample = null; }
+    if (sample) {
+      try { puedeTools = !!(await sample.limits())?.tools; } catch { puedeTools = false; }
+      statusEl.innerHTML = puedeTools
+        ? 'Conectado a <b>Claude</b>. El primer mensaje te pide permiso y usa tu cuenta.'
+        : 'Conectado a <b>Claude</b> en modo chatbot. Este visor no permite herramientas, así que el modo Agente usa la demo local.';
+    } else statusEl.innerHTML = 'Modo <b>demo local</b>: abrí esta página en Claude para hablar con el agente real.';
+  })();
+  hud();
+})();
+</script>
