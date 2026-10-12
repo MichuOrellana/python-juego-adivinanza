@@ -4,9 +4,11 @@ import { ChatbotVsAgente, SLIDES } from './carrusel/ChatbotVsAgente';
 import { ALTO, ANCHO } from './marca/Marco';
 import { cargarFuentes } from './marca/tema';
 import { ChatbotVsAgenteReel, DURACION, FPS } from './video/ChatbotVsAgenteReel';
+import { AnuncioProducto, DURACION_ANUNCIO } from './anuncios/AnuncioProducto';
+import { GRANO_LENTO, cargarFuentesAnuncio } from './anuncios/marca';
 
 const fuentes = delayRender('fuentes');
-cargarFuentes().then(() => continueRender(fuentes));
+Promise.all([cargarFuentes(), cargarFuentesAnuncio()]).then(() => continueRender(fuentes));
 
 // En el Studio: "carrusel-02" muestra todas las slides (1 por frame) para recorrerlas.
 const Recorrido: React.FC = () => <ChatbotVsAgente slide={useCurrentFrame() + 1} />;
@@ -15,6 +17,7 @@ export const Root: React.FC = () => (
   <>
     <Still id="chatbot-vs-agente" component={ChatbotVsAgente} width={ANCHO} height={ALTO} defaultProps={{ slide: 1 }} />
     <Composition id="reel-chatbot-vs-agente" component={ChatbotVsAgenteReel} width={1080} height={1920} fps={FPS} durationInFrames={DURACION} defaultProps={{ fondoVideo: true }} />
+    <Composition id="anuncio-grano-lento" component={AnuncioProducto} width={1080} height={1920} fps={30} durationInFrames={DURACION_ANUNCIO} defaultProps={{ marca: GRANO_LENTO }} />
     <Composition id="carrusel-02" component={Recorrido} width={ANCHO} height={ALTO} fps={1} durationInFrames={SLIDES.length} />
   </>
 );

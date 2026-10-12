@@ -57,3 +57,18 @@ SIN_VIDEO=1 node render-reel.mjs --cuadros 300 900 # cuadros sueltos para revisa
 
 - `src/video/ChatbotVsAgenteReel.tsx`: las escenas y sus tiempos (`ESCENAS`).
 - `src/video/anim.tsx` y `piezasAnim.tsx`: animaciones reutilizables (título palabra por palabra, burbujas, contador, ciclo).
+
+## Anuncios para marcas (plantilla)
+
+Es un anuncio de producto 9:16 de 15 s hecho con Remotion y React Three Fiber: gancho → producto 3D → beneficios → oferta → llamado a la acción.
+
+- `remotion/src/anuncios/marca.ts`: **todo lo que cambia por cliente** (nombre, colores, fuentes, textos, oferta). Para un cliente nuevo, copia `GRANO_LENTO`, cámbialo y regístralo en `Root.tsx`.
+- `remotion/src/anuncios/TazaEscena.tsx`: la escena 3D (taza con arte latte, vapor, granos que caen y cámara animada).
+- `remotion/src/anuncios/AnuncioProducto.tsx`: los tiempos y las animaciones de texto.
+- Muestra para el portafolio: `remotion/out/anuncio-grano-lento.mp4` (marca **ficticia**).
+
+```bash
+cd contenido-ia/remotion
+node render-anuncio.mjs                                  # → out/anuncio-grano-lento.mp4
+node render-anuncio.mjs anuncio-grano-lento --cuadros 100 360
+```
