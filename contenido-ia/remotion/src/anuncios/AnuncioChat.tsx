@@ -18,7 +18,7 @@ export type GuionChat = {
   tiempos: { amigosHasta: number; icono: number; pedidoDesde: number; pedidoHasta: number; esloganDesde: number; logoDesde: number };
 };
 
-export const DURACION_CHAT = 420;
+export const DURACION_CHAT = 570;
 const cl = { extrapolateLeft: 'clamp' as const, extrapolateRight: 'clamp' as const };
 const ANCHO_CHAT = 920, AREA_ALTO = 1080;
 
@@ -85,7 +85,7 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
   const iconoEntra = spring({ frame: f - t.icono, fps, config: { damping: 11 } });
   const iconoSube = spring({ frame: f - (t.pedidoDesde - 6), fps, config: { damping: 16 } });
   const wa = interpolate(f, [t.pedidoDesde - 4, t.pedidoDesde + 8, t.pedidoHasta - 6, t.pedidoHasta + 4], [0, 1, 1, 0], cl);
-  const tipeado = guion.eslogan.slice(0, Math.round(interpolate(f, [t.esloganDesde + 4, t.esloganDesde + 34], [0, guion.eslogan.length], cl)));
+  const tipeado = guion.eslogan.slice(0, Math.round(interpolate(f, [t.esloganDesde + 4, t.esloganDesde + 46], [0, guion.eslogan.length], cl)));
   const esloganOp = interpolate(f, [t.esloganDesde, t.esloganDesde + 4, t.logoDesde - 6, t.logoDesde], [0, 1, 1, 0], cl);
   const logo = spring({ frame: f - t.logoDesde, fps, config: { damping: 12 } });
   const pie = interpolate(f, [t.logoDesde + 18, t.logoDesde + 30], [0, 1], cl);
@@ -155,20 +155,20 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
 // Guion para MigasOk. Las fotos usan los mismos archivos que el anuncio del Día de la Madre.
 export const GUION_MIGASOK: GuionChat = {
   amigos: [
-    { lado: 'yo', escribiendo: true, desde: 6, hasta: 22 },
-    { lado: 'yo', texto: 'El domingo es el Día de la Madre 😩', desde: 22 },
-    { lado: 'yo', texto: 'y todavía no le compré nada a mamá', desde: 42 },
-    { lado: 'otro', escribiendo: true, desde: 60, hasta: 82 },
-    { lado: 'otro', texto: 'Regalale algo de MigasOk 🥪💛', desde: 82 },
+    { lado: 'yo', escribiendo: true, desde: 6, hasta: 28 },
+    { lado: 'yo', texto: 'El domingo es el Día de la Madre 😩', desde: 28 },
+    { lado: 'yo', texto: 'y todavía no le compré nada a mamá', desde: 58 },
+    { lado: 'otro', escribiendo: true, desde: 84, hasta: 114 },
+    { lado: 'otro', texto: 'Regalale algo de MigasOk 🥪💛', desde: 114 },
   ],
   pedido: [
-    { lado: 'yo', texto: 'Hola! Quiero el combo para mamá: docena de miga + budín 🙏', desde: 172 },
-    { lado: 'otro', escribiendo: true, desde: 190, hasta: 206 },
-    { lado: 'otro', texto: '¡Hola! Claro 😊 Mirá cómo quedan:', desde: 206 },
-    { lado: 'otro', foto: 'migasok/miga-pila.jpg', desde: 222 },
-    { lado: 'otro', foto: 'migasok/budin-chocolate.jpg', desde: 240 },
-    { lado: 'yo', texto: '¡Le va a encantar 😍 lo pido!', desde: 262 },
+    { lado: 'yo', texto: 'Hola! Quiero el combo para mamá: docena de miga + budín 🙏', desde: 232 },
+    { lado: 'otro', escribiendo: true, desde: 260, hasta: 286 },
+    { lado: 'otro', texto: '¡Hola! Claro 😊 Mirá cómo quedan:', desde: 286 },
+    { lado: 'otro', foto: 'migasok/miga-pila.jpg', desde: 312 },
+    { lado: 'otro', foto: 'migasok/budin-chocolate.jpg', desde: 342 },
+    { lado: 'yo', texto: '¡Le va a encantar 😍 lo pido!', desde: 380 },
   ],
   eslogan: 'El clásico que siempre suma.',
-  tiempos: { amigosHasta: 116, icono: 118, pedidoDesde: 156, pedidoHasta: 300, esloganDesde: 302, logoDesde: 348 },
+  tiempos: { amigosHasta: 170, icono: 172, pedidoDesde: 214, pedidoHasta: 430, esloganDesde: 432, logoDesde: 492 },
 };
