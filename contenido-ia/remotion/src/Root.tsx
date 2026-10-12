@@ -9,6 +9,7 @@ import { GRANO_LENTO, cargarFuentesAnuncio } from './anuncios/marca';
 import { AnuncioDiaMadre, DURACION_DIA_MADRE } from './anuncios/AnuncioDiaMadre';
 import { MIGASOK } from './anuncios/migasok';
 import { AnuncioChat, DURACION_CHAT, GUION_MIGASOK } from './anuncios/AnuncioChat';
+import { AnuncioBandeja, DURACION_BANDEJA } from './anuncios/AnuncioBandeja';
 import { DURACION_MUESTRARIO, MuestrarioMigas, cargarFuentesMuestrario } from './anuncios/MuestrarioMigas';
 
 const fuentes = delayRender('fuentes');
@@ -25,6 +26,7 @@ export const Root: React.FC = () => (
     <Composition id="anuncio-migasok-dia-madre" component={AnuncioDiaMadre} width={1080} height={1920} fps={30} durationInFrames={DURACION_DIA_MADRE} defaultProps={{ marca: MIGASOK }} />
     <Composition id="anuncio-migasok-chat" component={AnuncioChat} width={1080} height={1920} fps={30} durationInFrames={DURACION_CHAT} defaultProps={{ marca: MIGASOK, guion: GUION_MIGASOK }} />
     <Composition id="muestrario-migasok" component={MuestrarioMigas} width={1080} height={1920} fps={30} durationInFrames={DURACION_MUESTRARIO} />
+    <Composition id="anuncio-migasok-bandeja" component={AnuncioBandeja} width={1080} height={1920} fps={30} durationInFrames={DURACION_BANDEJA} defaultProps={{ marca: MIGASOK }} />
     <Composition id="carrusel-02" component={Recorrido} width={ANCHO} height={ALTO} fps={1} durationInFrames={SLIDES.length} />
   </>
 );
