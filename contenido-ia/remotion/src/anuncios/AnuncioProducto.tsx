@@ -11,7 +11,7 @@ const cl = { extrapolateLeft: 'clamp' as const, extrapolateRight: 'clamp' as con
 const useMarca = (m: MarcaAnuncio) => m;
 
 // Palabras que entran de a una con rebote. *texto* = destacado.
-const Palabras: React.FC<{ texto: string; desde: number; marca: MarcaAnuncio; size: number; serif?: boolean; paso?: number }> = ({ texto, desde, marca, size, serif, paso = 3 }) => {
+export const Palabras: React.FC<{ texto: string; desde: number; marca: MarcaAnuncio; size: number; serif?: boolean; paso?: number }> = ({ texto, desde, marca, size, serif, paso = 3 }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   let i = 0;
@@ -35,7 +35,7 @@ const Palabras: React.FC<{ texto: string; desde: number; marca: MarcaAnuncio; si
   );
 };
 
-const Tramo: React.FC<{ desde: number; hasta: number; children: React.ReactNode; top: number }> = ({ desde, hasta, children, top }) => {
+export const Tramo: React.FC<{ desde: number; hasta: number; children: React.ReactNode; top: number }> = ({ desde, hasta, children, top }) => {
   const f = useCurrentFrame();
   if (f < desde - 1 || f > hasta + 10) return null;
   const sal = interpolate(f, [hasta - 2, hasta + 8], [0, 1], cl);
