@@ -4,6 +4,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 
@@ -31,5 +32,12 @@ if (i >= 0) {
     concurrency: Math.max(1, Math.min(4, os.cpus().length - 1)),
     onProgress: ({ progress }) => { const p = Math.floor(progress * 10); if (p !== last) { last = p; console.log(`${p * 10}%`); } },
   });
+  // Volumen estándar para redes (≈ -14 LUFS) si el video tiene audio; la imagen no se toca.
+  const tieneAudio = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', outputLocation]).toString().trim();
+  if (tieneAudio) {
+    const tmp = outputLocation.replace(/\.mp4$/, '.tmp.mp4');
+    execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', outputLocation, '-c:v', 'copy', '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', tmp]);
+    fs.renameSync(tmp, outputLocation);
+  }
   console.log('Listo:', outputLocation);
 }

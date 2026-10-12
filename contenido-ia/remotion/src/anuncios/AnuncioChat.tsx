@@ -1,7 +1,7 @@
 // Anuncio "historia en chat" 9:16: un problema contado por mensajes → la marca lo resuelve por WhatsApp → eslogan → logo.
 // El guion es una lista de mensajes, así que sirve para cualquier marca.
 import React from 'react';
-import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { MIGASOK } from './migasok';
 import { FotoLogo, LogoMigas } from './LogoMigas';
 
@@ -72,7 +72,33 @@ const Chat: React.FC<{ mensajes: Mensaje[]; estilo: 'amigos' | 'whatsapp'; marca
   );
 };
 
-export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marca, guion }) => {
+// Sonidos sincronizados con el guion (archivos generados por scripts/sonidos.py, libres de derechos).
+export type ModoSonido = 'completo' | 'efectos' | 'ninguno';
+const Sonido: React.FC<{ archivo: string; desde: number; dur?: number; vol?: number }> = ({ archivo, desde, dur, vol = 1 }) => (
+  <Sequence from={desde} durationInFrames={dur}><Audio src={staticFile(`sonidos/${archivo}`)} volume={vol} /></Sequence>
+);
+const SonidosChat: React.FC<{ guion: GuionChat; modo: ModoSonido }> = ({ guion, modo }) => {
+  if (modo === 'ninguno') return null;
+  const t = guion.tiempos;
+  const deMensaje = (m: Mensaje, i: number, enWhatsApp: boolean) => {
+    if ('escribiendo' in m) return <Sonido key={i} archivo="tecleo.wav" desde={m.desde} dur={m.hasta - m.desde} vol={0.5} />;
+    if ('foto' in m) return <Sonido key={i} archivo="foto.wav" desde={m.desde} vol={0.7} />;
+    return <Sonido key={i} archivo={m.lado === 'yo' ? 'enviado.wav' : 'recibido.wav'} desde={m.desde} vol={enWhatsApp ? 0.7 : 0.6} />;
+  };
+  return (
+    <>
+      {modo === 'completo' && <Audio src={staticFile('sonidos/musica.wav')} volume={0.32} />}
+      {guion.amigos.map((m, i) => deMensaje(m, i, false))}
+      {guion.pedido.map((m, i) => deMensaje(m, 100 + i, true))}
+      <Sonido archivo="campanita.wav" desde={t.icono} vol={0.45} />
+      <Sonido archivo="tecleo.wav" desde={t.esloganDesde + 4} dur={42} vol={0.5} />
+      <Sonido archivo="campanita.wav" desde={t.logoDesde} vol={0.6} />
+      <Sonido archivo="whoosh.wav" desde={t.logoDesde + 66} vol={0.55} />
+    </>
+  );
+};
+
+export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat; sonido?: ModoSonido }> = ({ marca, guion, sonido = 'completo' }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { color, fuente } = marca;
@@ -99,6 +125,7 @@ export const AnuncioChat: React.FC<{ marca: Marca; guion: GuionChat }> = ({ marc
 
   return (
     <AbsoluteFill style={{ background: color.fondo2, fontFamily: fuente.texto, overflow: 'hidden' }}>
+      <SonidosChat guion={guion} modo={sonido} />
       <AbsoluteFill style={{ transform: `scale(${cam})` }}>
         {/* 1 · chat entre amigos */}
         {f < t.amigosHasta + 4 && <div style={{ opacity: salidaAmigos }}><Chat mensajes={guion.amigos} estilo="amigos" marca={marca} top={720} /></div>}
